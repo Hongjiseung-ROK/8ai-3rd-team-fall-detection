@@ -42,8 +42,16 @@ def calculate_angle(rvec):
 
 def main():
     # --- Configuration ---
-    MARKER_SIZE = 0.05  # 5cm (Adjust to your actual print size if needed for distance, but angle is scale-invariant)
-    FALL_THRESHOLD = 45 # Degrees to consider as "Fallen"
+    MARKER_SIZE = 0.05  # 5cm
+    FALL_THRESHOLD = 45 # Degrees
+    
+    # --- Class Definitions ---
+    # Customize these labels as needed
+    MARKER_CLASSES = {
+        0: "Target A (Normal)",
+        1: "Target B (Special)"
+    }
+
     
     # --- Camera Setup ---
     # Attempt to open the default camera
@@ -113,16 +121,24 @@ def main():
                         status = f"Stable ({int(angle)} deg)"
                         text_color = (0, 255, 0) # Green
                     
-                    # Display Text on Screen near the marker
+                    # Get Class Label
+                    # marker_id is a numpy array (e.g. [0]), need scalar for dict lookup
+                    cur_id = marker_id[0]
+                    label = MARKER_CLASSES.get(cur_id, f"Unknown ID {cur_id}")
+                    
+                    # Display Text on Screen
+                    # Line 1: Class Label
+                    # Line 2: Status
                     top_left = corners[i][0][0]
                     text_pos_x = int(top_left[0])
-                    text_pos_y = int(top_left[1]) - 10
+                    base_y = int(top_left[1]) - 10
                     
-                    # Safety check for text position
-                    text_pos_y = max(20, text_pos_y) 
-                    
-                    cv2.putText(frame, status, (text_pos_x, text_pos_y),
+                    cv2.putText(frame, f"[{label}]", (text_pos_x, max(20, base_y - 25)),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)  # Cyan for Label
+                                
+                    cv2.putText(frame, status, (text_pos_x, max(45, base_y)),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, text_color, 2)
+
                     
                     # Print to console occasionally or if status changes could be done here, 
                     # but kept silent for performance as requested.
