@@ -1,2 +1,4 @@
 opencv-contrib-python
 numpy
+fpdf
+psutil
