@@ -2,3 +2,5 @@ opencv-contrib-python
 numpy
 fpdf
 psutil
+pyodbc
+requests
