@@ -145,14 +145,16 @@ def main():
                     fall_detected = True
             
         # --- Fall Duration & Logging Logic ---
+        # --- Fall Duration & Logging Logic ---
         if fall_detected:
             if getattr(main, 'fall_start_time', None) is None:
                 main.fall_start_time = time.time()
+                main.notified_stages = set() # Track which alerts were sent
             
             duration = time.time() - main.fall_start_time
             
             if bottom_detected:
-               status = "FALL (Bottom)"
+               status = f"FALL (Bottom, {duration:.1f}s)"
                log_angle = 90.0
             else:
                status = f"FALLING ({duration:.1f}s)"
@@ -160,24 +162,25 @@ def main():
 
             color = (0, 0, 255) # Red
             
-            # REQUIREMENT: Log only after 2 seconds of continuous fall
-            if duration >= 2.0 or bottom_detected:
-                current_time = time.time()
-                if current_time - last_log_time > LOG_COOLDOWN:
-                    msg = f"[INFO] Confirmed Fall. Logging to DB. Angle: {int(log_angle)}deg"
+            # REQUIREMENT: Notify at 2s, 1m(60s), 10m(600s), 1h(3600s)
+            NOTIFICATION_THRESHOLDS = [2.0, 60.0, 600.0, 3600.0]
+
+            for threshold in NOTIFICATION_THRESHOLDS:
+                if (duration >= threshold) and (threshold not in main.notified_stages):
+                    final_angle_int = int(round(log_angle))
+                    msg = f"[INFO] Fall Alert (Stage: {threshold}s). Logging to DB. Angle: {final_angle_int}deg"
                     print(msg)
                     
                     # --- Local File Logging ---
                     try:
                         with open("local_fall_log.txt", "a") as f:
-                            f.write(f"{datetime.datetime.now()} - CONFIRMED FALL - {int(log_angle)}deg\n")
-                        print("[LOCAL] Saved to local_fall_log.txt")
+                            f.write(f"{datetime.datetime.now()} - CONFIRMED FALL ({int(threshold)}s) - {final_angle_int}deg\n")
+                        print(f"[LOCAL] Saved to local_fall_log.txt")
                     except Exception as e:
                         print(f"[LOCAL ERROR] {e}")
                         
                     # --- DB Logging ---
-                    db.log_event(CAMERA_ID, log_angle, "FALL_CONFIRMED", current_experiment_id)
-                    last_log_time = current_time
+                    db.log_event(CAMERA_ID, final_angle_int, "FALL_CONFIRMED", current_experiment_id)
                     
                     # --- Logic App Webhook (Async) ---
                     def send_webhook_async(payload):
@@ -192,16 +195,19 @@ def main():
                     payload = {
                         "Timestamp": datetime.datetime.utcnow().isoformat()[:-3] + 'Z',
                         "CameraID": CAMERA_ID,
-                        "RiskAngle": round(float(log_angle), 2),
-                        "Status": "FALL_CONFIRMED"
+                        "RiskAngle": final_angle_int,  # Rounded integer
+                        "Status": "FALL_CONFIRMED",
+                        "ExperimentID": current_experiment_id
                     }
                     
                     # Run in a separate thread to avoid blocking the video feed
                     threading.Thread(target=send_webhook_async, args=(payload,), daemon=True).start()
                         
-                    last_log_time = current_time
+                    main.notified_stages.add(threshold)
+                    last_log_time = time.time()
         else:
             main.fall_start_time = None
+            main.notified_stages = set()
             status = "Standing"
             color = (0, 255, 0) # Green
             

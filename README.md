@@ -7,14 +7,16 @@ A robust computer vision system designed to detect fall events for cylindrical o
 *   **Cylindrical Object Tracking:** Uses a strip of ArUco markers to detect tilt from any angle.
 *   **Robust Fall Detection Logic:**
     *   **Angle Smoothing:** Uses a moving average filter to reduce sensor noise.
-    *   **2-Second Hold Verification:** Requires a continuous "fallen" state for 2.0 seconds to prevent false alarms from flickering.
-    *   **Bottom Marker Trigger:** Immediate fall detection if the bottom marker (ID 99) is visible.
+    *   **Strict 2-Second Verification:** Requires a continuous "fallen" state for 2.0 seconds for *both* high-tilt angles and bottom marker detection to prevent false alarms.
 *   **Dual Logging System:**
     *   **Azure SQL Database:** Stores structured event data (`FallEvents` table) with `ExperimentID` and `VerificationStatus`.
     *   **Local Fallback Log:** Writes to `local_fall_log.txt` for offline debugging.
-*   **Real-time Alerts:**
-    *   **Logic App Webhook:** Asynchronously sends HTTP POST requests to Azure Logic Apps for email/SMS notifications without blocking the video feed.
-*   **Responsible AI Verification:**
+*   **Real-time Alerts with Smart Intervals:**
+    *   **Stage-Based Notifications:** Sends alerts at **2s, 1m, 10m, and 1h** of continuous fall duration. Alerts stop after 1 hour for the same event to prevent spam.
+    *   **Clean Data:** Risk Angle is rounded to the nearest integer for consistent reporting.
+    *   **Logic App Webhook:** Asynchronously sends HTTP POST requests to Azure Logic Apps.
+
+## Responsible AI Verification
     *   **Database Schema:** Includes `VerificationStatus` (Pending/Verified/FalsePositive) and `VerifySubject` columns.
     *   **Experiment Tracking:** Generates unique `ExperimentID` per run for session management.
 *   **Performance Monitoring:** Real-time RAM usage display.
@@ -64,9 +66,10 @@ python src/cylinder_fall_detection.py
     *   If tilt > 45 degrees OR Bottom Marker (ID 99) is seen:
         *   Timer starts.
     *   If condition holds for **2.0 seconds**:
-        *   **Log to DB:** Status `FALL_CONFIRMED`, VerificationStatus `0` (Pending).
+        *   **Smart Alert Start:** First notification sent (DB + Webhook).
+        *   **Follow-up Alerts:** If fall persists, alerts repeat at 1m, 10m, and 1h intervals.
+        *   **Log to DB:** Status `FALL_CONFIRMED`, VerificationStatus `0` (Pending), RiskAngle (Integer).
         *   **Webhook:** Sends JSON payload to Logic App (Timeout 30s, Async).
-        *   **Local Log:** Appends to `local_fall_log.txt`.
 
 ## Project Structure
 
