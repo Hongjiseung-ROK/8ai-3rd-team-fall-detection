@@ -11,7 +11,10 @@ import threading
 from collections import deque
 from db_logger import AzureDBLogger
 
-LOGIC_APP_URL = "https://prod-28.koreacentral.logic.azure.com:443/workflows/96cca591f739451d92d2396e05a0043e/triggers/When_an_HTTP_request_is_received/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2FWhen_an_HTTP_request_is_received%2Frun&sv=1.0&sig=qBBbUmM-wA7lu_4C1TfEpcUzlWUW4Co3FEkUSQJSyTo"
+# Fetch Logic App URL from secure env file
+LOGIC_APP_URL = AzureDBLogger.get_config('logic_app_url', 'sql.env')
+if not LOGIC_APP_URL:
+    print("[WARNING] 'logic_app_url' not found in sql.env. Webhook will likely fail.")
 
 def calculate_angle(rvec):
     """

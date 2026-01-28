@@ -46,6 +46,7 @@ A robust computer vision system designed to detect fall events for cylindrical o
         sql_id=your_username
         sql_pw=your_password
         sql_ocbc=Driver={ODBC Driver 18 for SQL Server};Server=tcp:your_server.database.windows.net,1433;Database=your_database;Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30;
+        logic_app_url="https://prod-xx.region.logic.azure.com..."
         ```
 
 ## Usage
